@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ホテル画像マッチングツール</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏨 ホテル画像マッチングツール</h1>
+            <p>2つのサイトからホテル画像を取得し、一致する画像を検出します</p>
+        </header>
+
+        <!-- Main Section: Input and Compare -->
+        <section class="card">
+            <h2>🔍 ホテル画像を取得して比較</h2>
+
+            <div class="main-form">
+                <div class="form-group">
+                    <label for="tour-id">tour.ne.jp ホテルID:</label>
+                    <input type="text" id="tour-id" placeholder="例: 64586">
+                </div>
+
+                <div class="form-group">
+                    <label for="airtrip-id">airtrip.jp ホテルID:</label>
+                    <input type="text" id="airtrip-id" placeholder="例: 39204H282">
+                </div>
+
+                <div class="form-group">
+                    <label for="threshold">類似度閾値: <span id="threshold-value">0.90</span></label>
+                    <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.9">
+                </div>
+
+                <button id="process-btn" class="btn btn-primary">画像を取得して比較</button>
+            </div>
+
+            <div id="process-status" class="status-message"></div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card">
+            <h2>📊 比較結果</h2>
+
+            <div id="results-summary" class="results-summary"></div>
+
+            <div id="matches-container" class="matches-container"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
