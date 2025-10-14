@@ -1,5 +1,6 @@
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 
 # ====== 1. 画像読み込み ======
 # imagesフォルダ内の既存画像を使用
@@ -46,23 +47,57 @@ orb = cv2.ORB_create(nfeatures=1000)
 kp1, des1 = orb.detectAndCompute(img1_resized, None)
 kp2, des2 = orb.detectAndCompute(img2_resized, None)
 
-# ====== 3. マッチング（Brute-Force with Hamming距離） ======
-bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-matches = bf.match(des1, des2)
+# ====== 4. マッチング（knnMatchで上位2件を取得） ======
+bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+matches = bf.knnMatch(des1, des2, k=2)
 
-# 類似度を上げるために距離でソート
-matches = sorted(matches, key=lambda x: x.distance)
+# ====== 5. 比率テストで良いマッチのみ抽出（Lowe's ratio test） ======
+good_matches = []
+for match_pair in matches:
+    if len(match_pair) == 2:
+        m, n = match_pair
+        # 最も近い距離が2番目に近い距離の75%以下なら採用
+        if m.distance < 0.75 * n.distance:
+            good_matches.append(m)
 
-# ====== 4. 上位マッチの平均距離を指標に類似度スコア化 ======
-good_matches = matches[:50]  # 上位50件のみ採用
-avg_distance = sum([m.distance for m in good_matches]) / len(good_matches)
-similarity_score = 1 / (1 + avg_distance)  # 距離の逆数をスコアに
+print(f"比率テスト後のマッチ数: {len(good_matches)}")
+
+# ====== 6. RANSACでホモグラフィ推定（誤マッチ除去） ======
+if len(good_matches) >= 4:
+    # マッチした特徴点の座標を取得
+    src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+
+    # RANSACでホモグラフィ行列を推定
+    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+
+    # インライア（正しいマッチ）のみ抽出
+    inliers = [good_matches[i] for i in range(len(good_matches)) if mask[i]]
+
+    print(f"RANSAC後のインライア数: {len(inliers)}/{len(good_matches)}")
+    print(f"インライア率: {len(inliers)/len(good_matches)*100:.1f}%")
+
+    # ====== 7. インライアの平均距離で類似度スコア化 ======
+    if len(inliers) > 0:
+        avg_distance = sum([m.distance for m in inliers]) / len(inliers)
+        similarity_score = 1 / (1 + avg_distance)
+        ransac_matches = inliers
+    else:
+        print("警告: インライアが0件でした")
+        avg_distance = float('inf')
+        similarity_score = 0.0
+        ransac_matches = []
+else:
+    print(f"警告: マッチ数が不足しています（{len(good_matches)}件）。RANSAC適用不可")
+    avg_distance = sum([m.distance for m in good_matches]) / len(good_matches) if good_matches else float('inf')
+    similarity_score = 1 / (1 + avg_distance) if good_matches else 0.0
+    ransac_matches = good_matches
 
 print(f"平均距離: {avg_distance:.2f}")
 print(f"類似度スコア: {similarity_score:.4f}")
 
-# ====== 5. 結果可視化 ======
-matched_img = cv2.drawMatches(img1_resized, kp1, img2_resized, kp2, good_matches, None, flags=2)
+# ====== 8. 結果可視化（RANSAC後のマッチを表示） ======
+matched_img = cv2.drawMatches(img1_resized, kp1, img2_resized, kp2, ransac_matches, None, flags=2)
 
 # 画像をファイルとして保存（WSL環境でGUIが使えない場合の対応）
 plt.figure(figsize=(15, 8))

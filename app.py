@@ -2,8 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import glob
 from scraper import extract_hotel_images_tour, extract_hotel_images_airtrip
-from PIL import Image
-import imagehash
+from matcher import compare_with_hash, compare_with_feature_matching
 
 app = Flask(__name__)
 
@@ -74,13 +73,14 @@ def scrape_images():
 def compare_images():
     """
     2つのパターンの画像を比較
-    期待されるJSON: {"pattern1": "...", "pattern2": "...", "threshold": 0.9}
+    期待されるJSON: {"pattern1": "...", "pattern2": "...", "threshold": 0.9, "method": "hash"}
     """
     try:
         data = request.get_json()
         pattern1 = data.get('pattern1', '')
         pattern2 = data.get('pattern2', '')
         threshold = float(data.get('threshold', 0.9))
+        method = data.get('method', 'hash')  # デフォルトは平均ハッシュ法
 
         # 画像ファイルを取得
         images1 = sorted(glob.glob(os.path.join(IMAGES_FOLDER, pattern1)))
@@ -91,45 +91,14 @@ def compare_images():
         if not images2:
             return jsonify({'error': f'パターンに一致する画像が見つかりません: {pattern2}'}), 400
 
-        # 1つ目のセットのハッシュを計算
-        hashes1 = {}
-        for img_path in images1:
-            try:
-                img = Image.open(img_path)
-                hash_val = imagehash.average_hash(img)
-                hashes1[img_path] = hash_val
-            except Exception as e:
-                print(f"画像処理エラー {img_path}: {e}")
+        if method not in ['hash', 'feature']:
+            return jsonify({'error': '無効なマッチング方法です'}), 400
 
-        # 2つ目のセットのハッシュを計算
-        hashes2 = {}
-        for img_path in images2:
-            try:
-                img = Image.open(img_path)
-                hash_val = imagehash.average_hash(img)
-                hashes2[img_path] = hash_val
-            except Exception as e:
-                print(f"画像処理エラー {img_path}: {e}")
-
-        # すべてのペアを比較
-        matches = []
-        for img1_path, hash1 in hashes1.items():
-            for img2_path, hash2 in hashes2.items():
-                # ハッシュ距離を計算
-                diff = hash1 - hash2
-                # 類似度に変換（0-1スケール）
-                similarity = 1 - diff / len(hash1.hash) ** 2
-
-                if similarity >= threshold:
-                    matches.append({
-                        'image1': os.path.basename(img1_path),
-                        'image2': os.path.basename(img2_path),
-                        'similarity': float(similarity),
-                        'hash_distance': int(diff)
-                    })
-
-        # 類似度順にソート（高い順）
-        matches.sort(key=lambda x: x['similarity'], reverse=True)
+        # 選択されたマッチング方法で比較
+        if method == 'hash':
+            matches = compare_with_hash(images1, images2, threshold)
+        else:  # method == 'feature'
+            matches = compare_with_feature_matching(images1, images2, threshold)
 
         return jsonify({
             'success': True,
@@ -138,7 +107,8 @@ def compare_images():
             'total_comparisons': len(images1) * len(images2),
             'matches': matches,
             'match_count': len(matches),
-            'threshold': threshold
+            'threshold': threshold,
+            'method': method
         })
 
     except Exception as e:
@@ -149,16 +119,20 @@ def compare_images():
 def scrape_and_compare():
     """
     両サイトから画像をスクレイピングして比較
-    期待されるJSON: {"tour_id": "...", "airtrip_id": "...", "threshold": 0.9}
+    期待されるJSON: {"tour_id": "...", "airtrip_id": "...", "threshold": 0.9, "method": "hash"}
     """
     try:
         data = request.get_json()
         tour_id = data.get('tour_id', '').strip()
         airtrip_id = data.get('airtrip_id', '').strip()
         threshold = float(data.get('threshold', 0.9))
+        method = data.get('method', 'hash')  # デフォルトは平均ハッシュ法
 
         if not tour_id or not airtrip_id:
             return jsonify({'error': 'tour_idとairtrip_idの両方が必要です'}), 400
+
+        if method not in ['hash', 'feature']:
+            return jsonify({'error': '無効なマッチング方法です'}), 400
 
         # ステップ1: 既存の画像をすべて削除
         cleanup_images('*.jpg')
@@ -175,45 +149,11 @@ def scrape_and_compare():
         if not airtrip_images:
             return jsonify({'error': 'airtrip.jpからの画像ダウンロードに失敗しました'}), 500
 
-        # ステップ4: tour画像のハッシュを計算
-        hashes_tour = {}
-        for img_path in tour_images:
-            try:
-                img = Image.open(img_path)
-                hash_val = imagehash.average_hash(img)
-                hashes_tour[img_path] = hash_val
-            except Exception as e:
-                print(f"画像処理エラー {img_path}: {e}")
-
-        # ステップ5: airtrip画像のハッシュを計算
-        hashes_airtrip = {}
-        for img_path in airtrip_images:
-            try:
-                img = Image.open(img_path)
-                hash_val = imagehash.average_hash(img)
-                hashes_airtrip[img_path] = hash_val
-            except Exception as e:
-                print(f"画像処理エラー {img_path}: {e}")
-
-        # ステップ6: すべてのペアを比較
-        matches = []
-        for img1_path, hash1 in hashes_tour.items():
-            for img2_path, hash2 in hashes_airtrip.items():
-                # ハッシュ距離を計算
-                diff = hash1 - hash2
-                # 類似度に変換（0-1スケール）
-                similarity = 1 - diff / len(hash1.hash) ** 2
-
-                if similarity >= threshold:
-                    matches.append({
-                        'image1': os.path.basename(img1_path),
-                        'image2': os.path.basename(img2_path),
-                        'similarity': float(similarity),
-                        'hash_distance': int(diff)
-                    })
-
-        # 類似度順にソート（高い順）
-        matches.sort(key=lambda x: x['similarity'], reverse=True)
+        # ステップ4: 選択されたマッチング方法で比較
+        if method == 'hash':
+            matches = compare_with_hash(tour_images, airtrip_images, threshold)
+        else:  # method == 'feature'
+            matches = compare_with_feature_matching(tour_images, airtrip_images, threshold)
 
         return jsonify({
             'success': True,
@@ -222,7 +162,8 @@ def scrape_and_compare():
             'total_comparisons': len(tour_images) * len(airtrip_images),
             'matches': matches,
             'match_count': len(matches),
-            'threshold': threshold
+            'threshold': threshold,
+            'method': method
         })
 
     except Exception as e:

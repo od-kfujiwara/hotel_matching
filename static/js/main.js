@@ -1,6 +1,7 @@
 // DOM Elements
 const tourIdInput = document.getElementById('tour-id');
 const airtripIdInput = document.getElementById('airtrip-id');
+const matchingMethodSelect = document.getElementById('matching-method');
 const thresholdInput = document.getElementById('threshold');
 const thresholdValue = document.getElementById('threshold-value');
 const processBtn = document.getElementById('process-btn');
@@ -13,6 +14,20 @@ const matchesContainer = document.getElementById('matches-container');
 processBtn.addEventListener('click', handleProcess);
 thresholdInput.addEventListener('input', (e) => {
     thresholdValue.textContent = parseFloat(e.target.value).toFixed(2);
+});
+
+// マッチング方法が変更されたときに閾値を自動調整
+matchingMethodSelect.addEventListener('change', (e) => {
+    const method = e.target.value;
+    if (method === 'hash') {
+        // 平均ハッシュ法: 0.90
+        thresholdInput.value = 0.90;
+        thresholdValue.textContent = '0.90';
+    } else if (method === 'feature') {
+        // 特徴点マッチング: 0.04
+        thresholdInput.value = 0.04;
+        thresholdValue.textContent = '0.04';
+    }
 });
 
 // Utility Functions
@@ -40,6 +55,7 @@ async function handleProcess() {
     const tourId = tourIdInput.value.trim();
     const airtripId = airtripIdInput.value.trim();
     const threshold = parseFloat(thresholdInput.value);
+    const method = matchingMethodSelect.value;
 
     if (!tourId || !airtripId) {
         showStatus(processStatus, '両方のホテルIDを入力してください', 'error');
@@ -74,7 +90,8 @@ async function handleProcess() {
             body: JSON.stringify({
                 tour_id: tourId,
                 airtrip_id: airtripId,
-                threshold
+                threshold,
+                method
             }),
         });
 
@@ -86,9 +103,13 @@ async function handleProcess() {
 
         showStatus(processStatus, `✓ 処理が完了しました！`, 'success');
 
+        // マッチング方法の表示名を取得
+        const methodName = method === 'hash' ? '平均ハッシュ法' : '特徴点マッチング (ORB+RANSAC)';
+
         // Display summary
         resultsSummary.innerHTML = `
             <h3>📈 サマリー</h3>
+            <p><strong>マッチング方法:</strong> ${methodName}</p>
             <p><strong>tour.ne.jpの画像数:</strong> ${data.tour_count}枚</p>
             <p><strong>airtrip.jpの画像数:</strong> ${data.airtrip_count}枚</p>
             <p><strong>総比較回数:</strong> ${data.total_comparisons}回</p>
@@ -100,24 +121,33 @@ async function handleProcess() {
 
         // Display matches
         if (data.matches.length > 0) {
-            matchesContainer.innerHTML = data.matches.map((match, index) => `
-                <div class="match-item">
-                    <div class="match-header">
-                        #${index + 1} - 類似度: ${(match.similarity * 100).toFixed(2)}%
-                        (ハッシュ距離: ${match.hash_distance})
-                    </div>
-                    <div class="match-content">
-                        <div class="match-image">
-                            <img src="/images/${match.image1}" alt="${match.image1}">
-                            <div class="label">${match.image1}</div>
+            matchesContainer.innerHTML = data.matches.map((match, index) => {
+                let detailInfo = '';
+                if (match.method === 'hash') {
+                    detailInfo = `ハッシュ距離: ${match.hash_distance}`;
+                } else if (match.method === 'feature') {
+                    detailInfo = `インライア: ${match.inlier_count}/${match.total_matches} (${(match.inlier_ratio * 100).toFixed(1)}%)`;
+                }
+
+                return `
+                    <div class="match-item">
+                        <div class="match-header">
+                            #${index + 1} - 類似度: ${(match.similarity * 100).toFixed(2)}%
+                            (${detailInfo})
                         </div>
-                        <div class="match-image">
-                            <img src="/images/${match.image2}" alt="${match.image2}">
-                            <div class="label">${match.image2}</div>
+                        <div class="match-content">
+                            <div class="match-image">
+                                <img src="/images/${match.image1}" alt="${match.image1}">
+                                <div class="label">${match.image1}</div>
+                            </div>
+                            <div class="match-image">
+                                <img src="/images/${match.image2}" alt="${match.image2}">
+                                <div class="label">${match.image2}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             matchesContainer.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #999;">
