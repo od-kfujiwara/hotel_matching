@@ -12,12 +12,14 @@ const matchesContainer = document.getElementById('matches-container');
 
 const methodThresholds = {
     hash: 0.90,
+    phash: 0.70,
     feature: 0.04,
-    clip: 0.30,
+    clip: 0.80,
 };
 
 const methodDisplayNames = {
     hash: '平均ハッシュ法',
+    phash: 'pHash (離散コサイン変換)',
     feature: '特徴点マッチング (ORB+RANSAC)',
     clip: 'CLIP (ViT-B/32)',
 };
@@ -131,7 +133,7 @@ async function handleProcess() {
         if (data.matches.length > 0) {
             matchesContainer.innerHTML = data.matches.map((match, index) => {
                 let detailInfo = '';
-                if (match.method === 'hash') {
+                if (match.method === 'hash' || match.method === 'phash') {
                     detailInfo = `ハッシュ距離: ${match.hash_distance}`;
                 } else if (match.method === 'feature') {
                     detailInfo = `インライア: ${match.inlier_count}/${match.total_matches} (${(match.inlier_ratio * 100).toFixed(1)}%)`;
