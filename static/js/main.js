@@ -10,6 +10,18 @@ const processStatus = document.getElementById('process-status');
 const resultsSummary = document.getElementById('results-summary');
 const matchesContainer = document.getElementById('matches-container');
 
+const methodThresholds = {
+    hash: 0.90,
+    feature: 0.04,
+    clip: 0.30,
+};
+
+const methodDisplayNames = {
+    hash: '平均ハッシュ法',
+    feature: '特徴点マッチング (ORB+RANSAC)',
+    clip: 'CLIP (ViT-B/32)',
+};
+
 // Event Listeners
 processBtn.addEventListener('click', handleProcess);
 thresholdInput.addEventListener('input', (e) => {
@@ -19,14 +31,10 @@ thresholdInput.addEventListener('input', (e) => {
 // マッチング方法が変更されたときに閾値を自動調整
 matchingMethodSelect.addEventListener('change', (e) => {
     const method = e.target.value;
-    if (method === 'hash') {
-        // 平均ハッシュ法: 0.90
-        thresholdInput.value = 0.90;
-        thresholdValue.textContent = '0.90';
-    } else if (method === 'feature') {
-        // 特徴点マッチング: 0.04
-        thresholdInput.value = 0.04;
-        thresholdValue.textContent = '0.04';
+    const defaultThreshold = methodThresholds[method];
+    if (defaultThreshold !== undefined) {
+        thresholdInput.value = defaultThreshold;
+        thresholdValue.textContent = defaultThreshold.toFixed(2);
     }
 });
 
@@ -104,7 +112,7 @@ async function handleProcess() {
         showStatus(processStatus, `✓ 処理が完了しました！`, 'success');
 
         // マッチング方法の表示名を取得
-        const methodName = method === 'hash' ? '平均ハッシュ法' : '特徴点マッチング (ORB+RANSAC)';
+        const methodName = methodDisplayNames[method] || method;
 
         // Display summary
         resultsSummary.innerHTML = `
@@ -127,13 +135,17 @@ async function handleProcess() {
                     detailInfo = `ハッシュ距離: ${match.hash_distance}`;
                 } else if (match.method === 'feature') {
                     detailInfo = `インライア: ${match.inlier_count}/${match.total_matches} (${(match.inlier_ratio * 100).toFixed(1)}%)`;
+                } else if (match.method === 'clip') {
+                    if (match.clip_model) {
+                        detailInfo = `モデル: ${match.clip_model}`;
+                    }
                 }
+                const detailInfoText = detailInfo ? ` (${detailInfo})` : '';
 
                 return `
                     <div class="match-item">
                         <div class="match-header">
-                            #${index + 1} - 類似度: ${(match.similarity * 100).toFixed(2)}%
-                            (${detailInfo})
+                            #${index + 1} - 類似度: ${(match.similarity * 100).toFixed(2)}%${detailInfoText}
                         </div>
                         <div class="match-content">
                             <div class="match-image">

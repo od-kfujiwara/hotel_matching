@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Callable, Dict, Iterable, List
 
+from .clip_matcher import METHOD_NAME as CLIP_NAME
+from .clip_matcher import compare_clip
 from .feature_matcher import METHOD_NAME as FEATURE_NAME
 from .feature_matcher import compare_feature
-
 from .hash_matcher import METHOD_NAME as HASH_NAME
 from .hash_matcher import compare_hash
 
@@ -15,6 +16,7 @@ MatcherFunc = Callable[[Iterable[str], Iterable[str], float], List[dict]]
 _MATCHERS: Dict[str, MatcherFunc] = {
     HASH_NAME: compare_hash,
     FEATURE_NAME: compare_feature,
+    CLIP_NAME: compare_clip,
 }
 
 
