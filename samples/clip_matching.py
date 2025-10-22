@@ -6,9 +6,9 @@ import clip
 import torch
 from PIL import Image
 
-# 画像パス設定（ここを変更することで簡単に別の画像でテストできます）
-image1_path = "images/airtrip_39210H1188_3.jpg"
-image2_path = "images/airtrip_39210H1188_4.jpg"
+# 画像パス設定
+image1_path = "./sample_images/day01.jpg"
+image2_path = "./sample_images/day02.jpg"
 
 # モデル読み込み
 device = "cuda" if torch.cuda.is_available() else "cpu"
