@@ -20,18 +20,19 @@
             <div class="main-form">
                 <div class="form-group">
                     <label for="tour-id">トラベルコ ホテルID</label>
-                    <input type="text" id="tour-id" placeholder="例: 35302">
+                    <input type="text" id="tour-id" value="35302" placeholder="例: 35302">
                 </div>
 
                 <div class="form-group">
                     <label for="airtrip-id">エアトリ ホテルID</label>
-                    <input type="text" id="airtrip-id" placeholder="例: 39216H170">
+                    <input type="text" id="airtrip-id" value="39216H170" placeholder="例: 39216H170">
                 </div>
 
                 <div class="form-group">
                     <label for="matching-method">マッチング方法</label>
                     <select id="matching-method" class="method-select">
                         <option value="hash">平均ハッシュ法 (高速)</option>
+                        <option value="phash">pHash (離散コサイン変換)</option>
                         <option value="feature">特徴点マッチング (ORB+RANSAC)</option>
                         <option value="clip">CLIP (ViT-B/32)</option>
                     </select>

@@ -10,12 +10,15 @@ from .feature_matcher import METHOD_NAME as FEATURE_NAME
 from .feature_matcher import compare_feature
 from .hash_matcher import METHOD_NAME as HASH_NAME
 from .hash_matcher import compare_hash
+from .phash_matcher import METHOD_NAME as PHASH_NAME
+from .phash_matcher import compare_phash
 
 MatcherFunc = Callable[[Iterable[str], Iterable[str], float], List[dict]]
 
 _MATCHERS: Dict[str, MatcherFunc] = {
     HASH_NAME: compare_hash,
     FEATURE_NAME: compare_feature,
+    PHASH_NAME: compare_phash,
     CLIP_NAME: compare_clip,
 }
 
