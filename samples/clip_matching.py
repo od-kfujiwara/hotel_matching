@@ -1,8 +1,9 @@
 import warnings
+
 warnings.filterwarnings("ignore", category=UserWarning, module="clip")
 
-import torch
 import clip
+import torch
 from PIL import Image
 
 # 画像パス設定（ここを変更することで簡単に別の画像でテストできます）
