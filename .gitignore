@@ -2,3 +2,4 @@ images/
 __pycache__/
 .claude/
 .mypy_cache/
+.env

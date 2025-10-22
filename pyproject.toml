@@ -17,4 +17,6 @@ dependencies = [
     "requests>=2.32.0",
     "opencv-python-headless>=4.10.0.84",
     "numpy>=2.1.0",
+    "google-generativeai>=0.8.0",
+    "python-dotenv>=1.0.1",
 ]
