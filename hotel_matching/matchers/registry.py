@@ -8,6 +8,8 @@ from .clip_matcher import METHOD_NAME as CLIP_NAME
 from .clip_matcher import compare_clip
 from .feature_matcher import METHOD_NAME as FEATURE_NAME
 from .feature_matcher import compare_feature
+from .gemini_matcher import METHOD_NAME as GEMINI_NAME
+from .gemini_matcher import compare_gemini
 from .hash_matcher import METHOD_NAME as HASH_NAME
 from .hash_matcher import compare_hash
 from .phash_matcher import METHOD_NAME as PHASH_NAME
@@ -20,6 +22,7 @@ _MATCHERS: Dict[str, MatcherFunc] = {
     FEATURE_NAME: compare_feature,
     PHASH_NAME: compare_phash,
     CLIP_NAME: compare_clip,
+    GEMINI_NAME: compare_gemini,
 }
 
 

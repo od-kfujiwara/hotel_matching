@@ -15,6 +15,7 @@ const methodThresholds = {
     phash: 0.70,
     feature: 0.04,
     clip: 0.80,
+    gemini: 0.80,
 };
 
 const methodDisplayNames = {
@@ -22,6 +23,13 @@ const methodDisplayNames = {
     phash: 'pHash (離散コサイン変換)',
     feature: '特徴点マッチング (ORB+RANSAC)',
     clip: 'CLIP (ViT-B/32)',
+    gemini: 'Gemini (AI判定)',
+};
+
+const decisionLabels = {
+    same: '一致',
+    different: '不一致',
+    uncertain: '判断保留',
 };
 
 // Event Listeners
@@ -58,6 +66,22 @@ function setButtonLoading(button, loading) {
         button.disabled = false;
         button.textContent = '画像を取得して比較';
     }
+}
+
+function renderImageCell(name, fallbackLabel) {
+    if (name) {
+        return `
+            <div class="match-image">
+                <img src="/images/${name}" alt="${name}">
+                <div class="label">${name}</div>
+            </div>
+        `;
+    }
+    return `
+        <div class="match-image">
+            <div class="label">${fallbackLabel}</div>
+        </div>
+    `;
 }
 
 // Process: Scrape and Compare
@@ -117,7 +141,7 @@ async function handleProcess() {
         const methodName = methodDisplayNames[method] || method;
 
         // Display summary
-        resultsSummary.innerHTML = `
+        const summaryHtml = `
             <h3>📈 サマリー</h3>
             <p><strong>マッチング方法:</strong> ${methodName}</p>
             <p><strong>tour.ne.jpの画像数:</strong> ${data.tour_count}枚</p>
@@ -128,10 +152,36 @@ async function handleProcess() {
                 <strong>一致した画像ペア:</strong> ${data.match_count}組
             </p>
         `;
+        resultsSummary.innerHTML = summaryHtml;
 
         // Display matches
         if (data.matches.length > 0) {
             matchesContainer.innerHTML = data.matches.map((match, index) => {
+                if (match.method === 'gemini') {
+                    const decisionKey = (match.decision || '').toLowerCase();
+                    const decisionLabel = decisionLabels[decisionKey] || decisionLabels.uncertain;
+                    const scoreText = typeof match.similarity === 'number'
+                        ? `${(match.similarity * 100).toFixed(2)}%`
+                        : 'N/A';
+                    const reasonText = (match.reason || '---').toString().replace(/\n/g, '<br>');
+                    const tourImageName = match.image1 || (Array.isArray(match.tour_images) ? match.tour_images[0] : '');
+                    const airtripImageName = match.image2 || (Array.isArray(match.airtrip_images) ? match.airtrip_images[0] : '');
+                    return `
+                        <div class="match-item">
+                            <div class="match-header">
+                                #${index + 1} - AI判定: ${decisionLabel}（スコア: ${scoreText}）
+                            </div>
+                            <div class="match-content">
+                                ${renderImageCell(tourImageName, 'tour.ne.jpの画像がありません')}
+                                ${renderImageCell(airtripImageName, 'airtrip.jpの画像がありません')}
+                            </div>
+                            <div style="margin-top: 12px; color: #555;">
+                                <strong>コメント:</strong> ${reasonText}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 let detailInfo = '';
                 if (match.method === 'hash' || match.method === 'phash') {
                     detailInfo = `ハッシュ距離: ${match.hash_distance}`;

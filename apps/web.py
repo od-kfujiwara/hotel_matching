@@ -98,7 +98,10 @@ def scrape_and_compare():
             matches = compare(method, tour_images, airtrip_images, threshold)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
+        except RuntimeError as exc:
+            return jsonify({"error": str(exc)}), 500
 
+        match_count = sum(1 for match in matches if match.get("passed_threshold", True))
         return jsonify(
             {
                 "success": True,
@@ -106,7 +109,7 @@ def scrape_and_compare():
                 "airtrip_count": len(airtrip_images),
                 "total_comparisons": len(tour_images) * len(airtrip_images),
                 "matches": matches,
-                "match_count": len(matches),
+                "match_count": match_count,
                 "threshold": threshold,
                 "method": method,
             }
