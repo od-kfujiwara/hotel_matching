@@ -13,7 +13,7 @@ from PIL import Image
 
 METHOD_NAME = "gemini"
 _DEFAULT_MODEL = "gemini-2.5-flash"
-_DEFAULT_TOP_N = 2
+_DEFAULT_TOP_N = 3
 
 load_dotenv()
 
