@@ -12,11 +12,11 @@
 
 実装済みのマッチング手法は以下の通りです。
 
-- 平均ハッシュ法 (`hash`): `hotel_matching/matchers/hash_matcher.py`
-- pHash（離散コサイン変換）(`phash`): `hotel_matching/matchers/phash_matcher.py`
-- 特徴点マッチング（ORB + RANSAC） (`feature`): `hotel_matching/matchers/feature_matcher.py`
-- CLIP 類似度 (`clip`): `hotel_matching/matchers/clip_matcher.py`
-- Gemini AI 判定 (`gemini`): `hotel_matching/matchers/gemini_matcher.py`
+- 平均ハッシュ法 (`ahash`): 小さくリサイズ→グレースケール化→明るさのハミング距離で比較
+- pHash（離散コサイン変換）(`phash`): 小さくリサイズ→グレースケール化→離散コサイン変換→周波数成分（模様・輪郭）で比較
+- 特徴点マッチング（ORB + RANSAC） (`feature`): ORBで特徴点（模様・輪郭）検出＋ベクトル化→マッチング→RANSACで外れ値除去して最終比較
+- CLIP 類似度 (`clip`): 意味的にベクトル化して、コサイン類似度（意味の近さ）で比較
+- Gemini AI 判定 (`gemini`): 自然言語で同一ホテルかどうかを質問
 
 マッチング手法は `hotel_matching/matchers/` に配置されています。コードから利用する例:
 
