@@ -9,8 +9,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>ホテル画像マッチングツール（サンプル）</h1>
-            <p>2つのサイトからホテル画像を取得し、一致する画像を検出します</p>
+            <h1>ホテル画像マッチングツール</h1>
+            <p>トラベルコとエアトリDPからホテル画像を取得し、一致する画像を検出します</p>
         </header>
 
         <!-- Main Section: Input and Compare -->
@@ -31,13 +31,15 @@
                 <div class="form-group">
                     <label for="matching-method">マッチング方法</label>
                     <select id="matching-method" class="method-select">
-                        <option value="hash">平均ハッシュ法 (高速)</option>
+                        <option value="hash">平均ハッシュ法</option>
                         <option value="phash">pHash (離散コサイン変換)</option>
                         <option value="feature">特徴点マッチング (ORB+RANSAC)</option>
                         <option value="clip">CLIP (ViT-B/32)</option>
-                        <option value="gemini">Gemini (AI判定)</option>
+                        <option value="gemini">Gemini判定（1~3枚目の画像のみ比較）</option>
                     </select>
                 </div>
+
+                <div id="method-hint" class="method-hint"></div>
 
                 <div class="form-group">
                     <label for="threshold">類似度閾値: <span id="threshold-value">0.90</span></label>
