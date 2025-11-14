@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 from PIL import Image
 
 # 画像パス設定
-image1_path = Path("sample_images/onsen3.jpg")
-image2_path = Path("sample_images/onsen4.jpg")
+image1_path = Path("sample_images/roten01.jpg")
+image2_path = Path("sample_images/roten03.jpg")
 
 if not image1_path.exists() or not image2_path.exists():
     print(
