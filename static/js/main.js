@@ -9,6 +9,7 @@ const processStatus = document.getElementById('process-status');
 
 const resultsSummary = document.getElementById('results-summary');
 const matchesContainer = document.getElementById('matches-container');
+const methodHintElement = document.getElementById('method-hint');
 
 const methodThresholds = {
     hash: 0.90,
@@ -26,6 +27,34 @@ const methodDisplayNames = {
     gemini: 'Gemini (AI判定)',
 };
 
+const methodHints = {
+    hash: {
+        summary: '画像を8×8に縮小し、平均明るさとの差分でハッシュ値を生成して比較',
+        pros: '非常に高速、メモリ使用量が少ない、完全一致やわずかな差分には強い',
+        cons: '回転・拡大縮小に弱い、精度はやや低め'
+    },
+    phash: {
+        summary: '離散コサイン変換によって画像の低周波成分（大まかな形や明暗）を抽出して、その特徴をハッシュにして比較',
+        pros: '平均ハッシュより精度が高い、画像の軽微な変更に強い',
+        cons: '回転・拡大縮小には依然として弱い、hashよりやや低速'
+    },
+    feature: {
+        summary: '画像の特徴点（エッジなど）を検出し、外れ値を除きながら位置関係を比較して一致判定',
+        pros: '回転・拡大縮小に強い、幾何学的変換に対応、高精度（今回は軽量モデルなのでそこまでではない）',
+        cons: '処理時間が長い、特徴点が少ない画像では精度低下'
+    },
+    clip: {
+        summary: '画像の意味的特徴を抽出して比較（もう少し精度の高いモデルもあり）',
+        pros: '意味的に類似した画像を検出可能、異なるアングルでも判定可能',
+        cons: '処理時間が長い、完全一致検出には不向き'
+    },
+    gemini: {
+        summary: 'Geminiが2つの画像が同じホテルかを判定し、一致・不一致を判断 ※閾値は未使用です',
+        pros: 'AIが文脈を理解して判定、かなり複雑なケースにも対応可能',
+        cons: 'API利用料金がかかるため全通り比較は非現実的、処理時間が長い'
+    }
+};
+
 const decisionLabels = {
     same: '一致',
     different: '不一致',
@@ -38,7 +67,7 @@ thresholdInput.addEventListener('input', (e) => {
     thresholdValue.textContent = parseFloat(e.target.value).toFixed(2);
 });
 
-// マッチング方法が変更されたときに閾値を自動調整
+// マッチング方法が変更されたときに閾値を自動調整し、ヒントを更新
 matchingMethodSelect.addEventListener('change', (e) => {
     const method = e.target.value;
     const defaultThreshold = methodThresholds[method];
@@ -46,6 +75,7 @@ matchingMethodSelect.addEventListener('change', (e) => {
         thresholdInput.value = defaultThreshold;
         thresholdValue.textContent = defaultThreshold.toFixed(2);
     }
+    updateMethodHint(method);
 });
 
 // Utility Functions
@@ -56,6 +86,22 @@ function showStatus(element, message, type) {
 
 function hideStatus(element) {
     element.className = 'status-message';
+}
+
+function updateMethodHint(method) {
+    const hint = methodHints[method];
+    if (!hint) {
+        methodHintElement.style.display = 'none';
+        return;
+    }
+
+    methodHintElement.innerHTML = `
+        <div class="hint-title">💡ヒント</div>
+        <div class="hint-section"><strong>概要:</strong> ${hint.summary}</div>
+        <div class="hint-section"><strong>メリット:</strong> ${hint.pros}</div>
+        <div class="hint-section"><strong>デメリット:</strong> ${hint.cons}</div>
+    `;
+    methodHintElement.style.display = 'block';
 }
 
 function setButtonLoading(button, loading) {
@@ -101,22 +147,7 @@ async function handleProcess() {
     matchesContainer.innerHTML = '';
 
     try {
-        // Step 1: Show progress - Fetching from tour.ne.jp
-        showStatus(processStatus, '📥 tour.ne.jpから画像を取得中...', 'loading');
-        await new Promise(resolve => setTimeout(resolve, 100)); // Allow UI update
-
-        // Step 2: Show progress - Fetching from airtrip.jp (will happen on server)
-        setTimeout(() => {
-            showStatus(processStatus, '📥 airtrip.jpから画像を取得中...', 'loading');
-        }, 1000);
-
-        // Step 3: Show progress - Comparing
-        setTimeout(() => {
-            showStatus(processStatus, '🔍 画像を比較中...', 'loading');
-        }, 2000);
-
-        // Make the API call
-        const response = await fetch('/api/scrape_and_compare', {
+        const apiPromise = fetch('/api/scrape_and_compare', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -128,6 +159,18 @@ async function handleProcess() {
                 method
             }),
         });
+
+        // その間にステータス表示を順次更新
+        showStatus(processStatus, '📥 tour.ne.jpから画像を取得中...', 'loading');
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        showStatus(processStatus, '📥 airtrip.jpから画像を取得中...', 'loading');
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        showStatus(processStatus, '🔍 画像を比較中...', 'loading');
+
+        // API結果を待つ
+        const response = await apiPromise;
 
         const data = await response.json();
 
@@ -142,7 +185,7 @@ async function handleProcess() {
 
         // Display summary
         const summaryHtml = `
-            <h3>📈 サマリー</h3>
+            <h3>📈 概要</h3>
             <p><strong>マッチング方法:</strong> ${methodName}</p>
             <p><strong>tour.ne.jpの画像数:</strong> ${data.tour_count}枚</p>
             <p><strong>airtrip.jpの画像数:</strong> ${data.airtrip_count}枚</p>
@@ -231,4 +274,6 @@ async function handleProcess() {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Hotel Image Matching Tool initialized');
+    // 初期表示時のヒントを表示
+    updateMethodHint(matchingMethodSelect.value);
 });

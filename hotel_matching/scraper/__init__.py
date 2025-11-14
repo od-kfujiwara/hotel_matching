@@ -145,6 +145,7 @@ def extract_hotel_images_airtrip(hotel_id: str) -> List[str]:
 
     try:
         response = requests.get(url, params=params, timeout=10)
+        print(f"再検索URL: {response.url}")
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -157,7 +158,7 @@ def extract_hotel_images_airtrip(hotel_id: str) -> List[str]:
         image_urls = []
         for img in gallery_section.find_all("img"):
             src = img.get("src")
-            if src and "i.travelapi.com" in src:
+            if src and ("i.travelapi.com" in src or "agoda.net" in src):
                 image_urls.append(src)
 
         image_urls = list(dict.fromkeys(image_urls))  # 重複排除
